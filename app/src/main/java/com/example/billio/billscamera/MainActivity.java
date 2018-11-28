@@ -27,6 +27,7 @@ import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
@@ -45,6 +46,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -96,6 +99,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        final Handler handler = new Handler();
+
+        Log.i("LOGCAT", "onCreate() called");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -105,14 +113,25 @@ public class MainActivity extends AppCompatActivity {
         btnCapture = (Button)findViewById(R.id.btnCapture);
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+
+            final long period = 10000;
+
             @Override
             public void onClick(View v) {
-                takePicture();
+
+                Log.i("LOGCAT", "Button clicked!~");
+
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        Log.i("LOGCAT", "Taking picture");
+                        takePicture();
+                    }
+                }, 0, period);
             }
         });
 
     }
-
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private void takePicture() {
