@@ -4,6 +4,8 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Camera;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
@@ -36,23 +38,52 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.entity.mime.content.StringBody;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.HttpHeaderParser;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+import com.android.volley.DefaultRetryPolicy;
+
 
 public class MainActivity extends AppCompatActivity {
 
     private Button btnCapture;
     private TextureView textureView;
+    String serverURL = "http://boardify.ml/upload";
+//    String serverURL = "";
+    HashMap<String, String> header = new HashMap<>();
+
 
     //Check state orientation of output image
     private static final SparseIntArray ORIENTATions = new SparseIntArray();
@@ -101,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
 
         final Handler handler = new Handler();
+        header.put("Content-Type", "multipart/form-data");
 
         Log.i("LOGCAT", "onCreate() called");
 
@@ -114,18 +146,20 @@ public class MainActivity extends AppCompatActivity {
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 
-            final long period = 10000;
+            final long period = 15000;
 
             @Override
             public void onClick(View v) {
 
                 Log.i("LOGCAT", "Button clicked!~");
 
+
                 new Timer().schedule(new TimerTask() {
                     @Override
                     public void run() {
                         Log.i("LOGCAT", "Taking picture");
                         takePicture();
+
                     }
                 }, 0, period);
             }
@@ -164,6 +198,9 @@ public class MainActivity extends AppCompatActivity {
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION,ORIENTATions.get(rotation));
 
             file = new File(Environment.getExternalStorageDirectory()+"/"+ UUID.randomUUID().toString()+".JPEG");
+
+
+
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader imageReader) {
@@ -172,8 +209,18 @@ public class MainActivity extends AppCompatActivity {
                         image = reader.acquireLatestImage();
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         byte[] bytes = new byte[buffer.capacity()];
+                        uploadBitmap(bytes);
+
+
+
                         buffer.get(bytes);
+
                         save(bytes);
+
+//                        Log.i("Logcat", "uploadBitmap called");
+
+
+
                     }
                     catch (FileNotFoundException e){
                         e.printStackTrace();
@@ -260,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
         } catch(CameraAccessException e){
             e.printStackTrace();
         }
-        
+
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -296,7 +343,6 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             manager.openCamera(cameraId,stateCallBack,null);
-
 
 
 
@@ -376,4 +422,73 @@ public class MainActivity extends AppCompatActivity {
         mBackgroundThread.start();
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
     }
+
+    public byte[] getFileDataFromDrawable(Bitmap bitmap) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+        return byteArrayOutputStream.toByteArray();
+    }
+
+//    private void uploadBitmap(final Bitmap bitmap) {
+//    private void uploadBitmap(final byte[] byteData) {
+
+    private void uploadBitmap(final byte[] byteData) {
+
+        //our custom volley request
+        Log.i("LOGCAT", "Inside uploadBitmap ");
+        VolleyMultipartRequest volleyMultipartRequest = new VolleyMultipartRequest(Request.Method.POST, serverURL,
+                new Response.Listener<NetworkResponse>() {
+
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        try {
+                            JSONObject obj = new JSONObject(new String(response.data));
+                            Log.d("response","uploadResponse" + obj.getString("description"));
+                            //Toast.makeText(getApplicationContext(), obj.getString("message"), Toast.LENGTH_SHORT).show();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }) {
+
+            /*
+             * If you want to add more parameters with the image
+             * you can do it here
+             * here we have only one parameter with the image
+             * which is tags
+             * */
+           /* @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                params.put("key", tags);
+                return params;
+            }*/
+
+            /*
+             * Here we are passing image by renaming it with a unique name
+             * */
+            @Override
+            protected Map<String, DataPart> getByteData() {
+                Map<String, DataPart> params = new HashMap<>();
+                long imagename = System.currentTimeMillis();
+                params.put("file", new DataPart(imagename + ".jpg", byteData));
+//                params.put("file", );
+                return params;
+            }
+        };
+
+        //adding the request to volley
+        Volley.newRequestQueue(this).add(volleyMultipartRequest);
+    }
+
 }
+
+
+
+
