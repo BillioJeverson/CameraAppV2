@@ -153,15 +153,15 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.i("LOGCAT", "Button clicked!~");
 
-
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        Log.i("LOGCAT", "Taking picture");
-                        takePicture();
-
-                    }
-                }, 0, period);
+                takePicture();
+//                new Timer().schedule(new TimerTask() {
+//                    @Override
+//                    public void run() {
+//                        Log.i("LOGCAT", "Taking picture");
+//                        takePicture();
+//
+//                    }
+//                }, 0, period);
             }
         });
 
@@ -195,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
             captureBuilder.set(CaptureRequest.CONTROL_MODE,CameraMetadata.CONTROL_MODE_AUTO);
 
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION,ORIENTATions.get(rotation));
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION,ORIENTATions.get(270));
 
             file = new File(Environment.getExternalStorageDirectory()+"/"+ UUID.randomUUID().toString()+".JPEG");
 
