@@ -38,6 +38,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.FileBody;
@@ -80,6 +81,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnCapture;
     private TextureView textureView;
+    //private PreviewSize previewSize;
     String serverURL = "http://boardify.ml/upload";
 //    String serverURL = "";
     HashMap<String, String> header = new HashMap<>();
@@ -195,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
             captureBuilder.set(CaptureRequest.CONTROL_MODE,CameraMetadata.CONTROL_MODE_AUTO);
 
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION,ORIENTATions.get(270));
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION,ORIENTATions.get(rotation));
 
             file = new File(Environment.getExternalStorageDirectory()+"/"+ UUID.randomUUID().toString()+".JPEG");
 
