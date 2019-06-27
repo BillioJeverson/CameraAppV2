@@ -8,6 +8,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Camera;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -81,9 +83,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnCapture;
     private TextureView textureView;
-    //private PreviewSize previewSize;
+    private Size mPreviewSize;
     String serverURL = "http://boardify.ml/upload";
-//    String serverURL = "";
     HashMap<String, String> header = new HashMap<>();
 
 
@@ -169,6 +170,24 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private Size getPreferedPreviewSize(Size[] MapSizes, int width, int height){
+        List<Size> collectorSizes = new ArrayList<>();
+        for ( Size option: MapSizes){
+            if(width> height ){
+                if(option.getWidth()>width && option.getHeight()> height ){
+                    collectorSizes.add(option);
+                }else{
+                    if(option.getWidth()>height&& option.getHeight()>width){
+                        collectorSizes.add(option);
+                    }
+                }
+
+            }
+        }
+        return MapSizes[0];
+    }
+
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private void takePicture() {
         if(cameraDevice==null)
@@ -180,6 +199,8 @@ public class MainActivity extends AppCompatActivity {
             if (characteristics != null)
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
                         .getOutputSizes(ImageFormat.JPEG);
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            mPreviewSize = getPreferedPreviewSize(map.getOutputSizes(SurfaceTexture.class),textureView.getWidth(),textureView.getHeight());
             int width = 640;
             int height = 480;
             if(jpegSizes != null && jpegSizes.length>0)
@@ -357,6 +378,7 @@ public class MainActivity extends AppCompatActivity {
         @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            transformImage(width,height);
             openCamera();
         }
 
@@ -393,8 +415,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         startBackgroundThread();
-        if(textureView.isAvailable())
+        if(textureView.isAvailable()) {
+            transformImage(textureView.getWidth(), textureView.getHeight());
             openCamera();
+        }
         else
             textureView.setSurfaceTextureListener(textureListener);
     }
@@ -417,6 +441,26 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
+    }
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void transformImage(int width, int height){
+        if(mPreviewSize == null || textureView == null) {
+            return;
+        }
+        Matrix matrix = new Matrix();
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        RectF textureRectF = new RectF(0,0,width,height);
+        RectF previewRectF = new RectF(0,0,mPreviewSize.getHeight(),mPreviewSize.getWidth());
+        float centerX = textureRectF.centerX();
+        float centerY = textureRectF.centerY();
+        if(rotation==Surface.ROTATION_90||rotation==Surface.ROTATION_270){
+            previewRectF.offset(centerX-previewRectF.centerX(),centerY-previewRectF.centerY());
+            matrix.setRectToRect(textureRectF,previewRectF,Matrix.ScaleToFit.FILL);
+            float scale = Math.max((float)width/mPreviewSize.getWidth(),(float)height/mPreviewSize.getHeight());
+            matrix.postScale(scale,scale,centerX,centerY);
+            matrix.postRotate(90*(rotation-2),centerX,centerY);
+        }
+        textureView.setTransform(matrix);
     }
 
     private void startBackgroundThread() {
