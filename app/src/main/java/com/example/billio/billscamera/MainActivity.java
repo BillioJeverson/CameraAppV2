@@ -200,7 +200,6 @@ public class MainActivity extends AppCompatActivity {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
                         .getOutputSizes(ImageFormat.JPEG);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            mPreviewSize = getPreferedPreviewSize(map.getOutputSizes(SurfaceTexture.class),textureView.getWidth(),textureView.getHeight());
             int width = 640;
             int height = 480;
             if(jpegSizes != null && jpegSizes.length>0)
@@ -208,6 +207,9 @@ public class MainActivity extends AppCompatActivity {
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
             }
+
+            mPreviewSize = getPreferedPreviewSize(map.getOutputSizes(SurfaceTexture.class),width,height);
+
             final ImageReader reader = ImageReader.newInstance(width,height,ImageFormat.JPEG,1);
             List<Surface> outputSurface = new ArrayList<>(2);
             outputSurface.add(reader.getSurface());
@@ -450,7 +452,7 @@ public class MainActivity extends AppCompatActivity {
         Matrix matrix = new Matrix();
         int rotation = getWindowManager().getDefaultDisplay().getRotation();
         RectF textureRectF = new RectF(0,0,width,height);
-        RectF previewRectF = new RectF(0,0,mPreviewSize.getHeight(),mPreviewSize.getWidth());
+        RectF previewRectF = new RectF(0,0,height,width);
         float centerX = textureRectF.centerX();
         float centerY = textureRectF.centerY();
         if(rotation==Surface.ROTATION_90||rotation==Surface.ROTATION_270){
